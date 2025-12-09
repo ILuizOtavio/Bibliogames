@@ -1,6 +1,6 @@
-import { onValue, ref } from "firebase/database";
-import { useEffect, useState } from "react";
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image } from "react-native";
+import { ref, onValue } from "firebase/database";
 import { dbRealtime } from "../lib/BDfirebase";
 
 export default function BibliotecaGrid({ navigation }) {
@@ -8,6 +8,7 @@ export default function BibliotecaGrid({ navigation }) {
 
   useEffect(() => {
     const jogosRef = ref(dbRealtime, "jogos");
+
     const unsub = onValue(jogosRef, (snap) => {
       if (snap.exists()) {
         const data = snap.val();
@@ -27,15 +28,40 @@ export default function BibliotecaGrid({ navigation }) {
 
       <FlatList
         data={jogos}
-        numColumns={2}
         keyExtractor={(item) => item.id}
-        columnWrapperStyle={{ justifyContent: "space-between" }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("DetalhesJogo", { jogo: item })}>
-            <Image source={{ uri: item.capa }} style={styles.capa} />
-            <View style={styles.overlay}>
-              <Text style={styles.title}>{item.nome}</Text>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => navigation.navigate("DetalhesJogo", { jogo: item })}
+          >
+            <Image
+              source={
+                item.capa
+                  ? { uri: item.capa }
+                  : require("../../assets/images/no-image.png")
+              }
+              style={styles.capa}
+            />
+
+            <View style={styles.infoArea}>
+              <Text style={styles.title}>{item.Titulo}</Text>
+
+              {item.Genero ? (
+                <Text style={styles.sub}>🎮 {item.Genero}</Text>
+              ) : null}
+
+              {item.Ano ? (
+                <Text style={styles.sub}>📅 {item.Ano}</Text>
+              ) : null}
+
+              {item.Plataforma ? (
+                <Text style={styles.sub}>🖥 {item.Plataforma}</Text>
+              ) : null}
+
+              {item.Nota ? (
+                <Text style={styles.sub}>⭐ {item.Nota}</Text>
+              ) : null}
             </View>
           </TouchableOpacity>
         )}
@@ -46,9 +72,29 @@ export default function BibliotecaGrid({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000", padding: 16 },
-  header: { color: "#fff", fontSize: 22, fontWeight: "700", marginBottom: 12, textAlign: "center" },
-  card: { width: "48%", height: 190, backgroundColor: "#000", borderWidth: 1, borderColor: "#fff", borderRadius: 10, marginBottom: 12, overflow: "hidden" },
-  capa: { width: "100%", height: "100%" },
-  overlay: { position: "absolute", bottom: 0, width: "100%", backgroundColor: "rgba(0,0,0,0.6)", paddingVertical: 6 },
-  title: { color: "#fff", textAlign: "center", fontSize: 14, fontWeight: "600" },
+  header: { color: "#fff", fontSize: 22, fontWeight: "700", marginBottom: 16, textAlign: "center" },
+
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#111",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+    borderColor: "#333",
+    borderWidth: 1,
+    alignItems: "center",
+  },
+
+  capa: {
+    width: 90,
+    height: 120,
+    borderRadius: 6,
+    marginRight: 15,
+    backgroundColor: "#222",
+  },
+
+  infoArea: { flex: 1 },
+
+  title: { color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 4 },
+  sub: { color: "#aaa", fontSize: 14, marginBottom: 3 },
 });

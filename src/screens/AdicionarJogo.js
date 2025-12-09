@@ -1,56 +1,68 @@
+// src/screens/AdicionarJogo.js
+import React, { useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { ref as dbRef, push, set } from "firebase/database";
-import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
-import { useState } from "react";
-import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { dbRealtime, storage } from "../lib/BDfirebase";
 
 export default function AdicionarJogo({ navigation }) {
-  const [nome, setNome] = useState("");
+  const [titulo, setTitulo] = useState("");
   const [genero, setGenero] = useState("");
+  const [ano, setAno] = useState("");
+  const [nota, setNota] = useState("");
+  const [plataforma, setPlataforma] = useState("");
+  const [dev, setDev] = useState("");
+
   const [imagemUri, setImagemUri] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   async function escolherImagem() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("Permissão necessária", "Permita acesso às imagens.");
-      return;
-    }
+    if (!perm.granted) return Alert.alert("Permissão negada");
 
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
-    if (result.canceled) return;
-    setImagemUri(result.assets[0].uri);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+    });
+
+    if (!result.canceled) setImagemUri(result.assets[0].uri);
   }
 
   async function salvar() {
-    if (!nome.trim() || !imagemUri) {
-      Alert.alert("Erro", "Preencha o nome e escolha uma imagem.");
+    if (!titulo.trim()) {
+      Alert.alert("Erro", "Título é obrigatório.");
       return;
     }
 
     try {
       setUploading(true);
+      let url = null;
 
-      // fetch -> blob
-      const resp = await fetch(imagemUri);
-      const blob = await resp.blob();
+      if (imagemUri) {
+        const blob = await (await fetch(imagemUri)).blob();
+        const fileRef = storageRef(storage, `capas/${Date.now()}.jpg`);
+        await uploadBytes(fileRef, blob);
+        url = await getDownloadURL(fileRef);
+      }
 
-      // upload para storage
-      const fileRef = storageRef(storage, `capas/${Date.now()}.jpg`);
-      await uploadBytes(fileRef, blob);
-      const url = await getDownloadURL(fileRef);
-
-      // salvar no RTDB
       const novoRef = push(dbRef(dbRealtime, "jogos"));
-      await set(novoRef, { nome: nome.trim(), genero: genero.trim() || "", capa: url });
 
-      Alert.alert("Sucesso", "Jogo adicionado.");
-      setNome(""); setGenero(""); setImagemUri(null);
+      await set(novoRef, {
+        Titulo: titulo,
+        Genero: genero,
+        Ano: ano,
+        Nota: nota,
+        Plataforma: plataforma,
+        Desenvolvedor: dev,
+        capa: url,
+      });
+
+      Alert.alert("Sucesso", "Jogo adicionado!");
       navigation.navigate("Biblioteca");
     } catch (err) {
-      console.error(err);
-      Alert.alert("Erro", "Falha ao salvar: " + (err.message || err));
+      console.log(err);
+      Alert.alert("Erro", err.message);
     } finally {
       setUploading(false);
     }
@@ -60,17 +72,25 @@ export default function AdicionarJogo({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.title}>Adicionar Jogo</Text>
 
-      <TextInput placeholder="Nome" placeholderTextColor="#888" style={styles.input} value={nome} onChangeText={setNome} />
-      <TextInput placeholder="Gênero (opcional)" placeholderTextColor="#888" style={styles.input} value={genero} onChangeText={setGenero} />
+      <TextInput placeholder="Título" placeholderTextColor="#888" style={styles.input} value={titulo} onChangeText={setTitulo} />
+      <TextInput placeholder="Gênero" placeholderTextColor="#888" style={styles.input} value={genero} onChangeText={setGenero} />
+      <TextInput placeholder="Ano" placeholderTextColor="#888" style={styles.input} value={ano} onChangeText={setAno} />
+      <TextInput placeholder="Nota" placeholderTextColor="#888" style={styles.input} value={nota} onChangeText={setNota} />
+      <TextInput placeholder="Plataforma" placeholderTextColor="#888" style={styles.input} value={plataforma} onChangeText={setPlataforma} />
+      <TextInput placeholder="Desenvolvedor" placeholderTextColor="#888" style={styles.input} value={dev} onChangeText={setDev} />
 
       <TouchableOpacity style={styles.btn} onPress={escolherImagem}>
-        <Text style={styles.btnText}>{imagemUri ? "Trocar Imagem" : "Escolher Imagem"}</Text>
+        <Text style={styles.btnText}>
+          {imagemUri ? "Trocar Imagem" : "Escolher Imagem"}
+        </Text>
       </TouchableOpacity>
 
       {imagemUri && <Image source={{ uri: imagemUri }} style={styles.preview} />}
 
       <TouchableOpacity style={[styles.btn, { marginTop: 18 }]} onPress={salvar} disabled={uploading}>
-        <Text style={styles.btnText}>{uploading ? "Enviando..." : "Salvar Jogo"}</Text>
+        <Text style={styles.btnText}>
+          {uploading ? "Enviando..." : "Salvar Jogo"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
